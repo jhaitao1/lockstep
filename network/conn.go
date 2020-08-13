@@ -61,7 +61,7 @@ func (c *Conn) readLoop() {
 			fmt.Println("c.conn.Read Error:", err)
 			return
 		}
-		//等待添加，这部分会考虑封装一下
+		//这部分是把数据打成Packet然后放到readChan上由handleLoop去处理
 	}
 }
 
@@ -93,17 +93,41 @@ func (c *Conn) writeLoop() {
 					return
 				}
 			}
-		default:
 		}
 	}
 }
 
 //handleLoop 处理数据
 func (c *Conn) handleLoop() {
+	defer func() {
+		err := recover()
+		if err != nil {
+			fmt.Println(err)
+		}
+		c.conn.Close() //这三个loop直接这么关闭会有隐患这里到时会封装一个函数sync.once确保只关闭一次
+	}()
 
+	for {
+		select {
+		case <-c.closeChan:
+			return
+		case p, ok := <-c.readChan:
+			if ok {
+				//有数据之后就就行消息的分发反序列化处理
+			}
+		}
+	}
 }
 
-//Work 主要工作是读写
+func asyncWork(fn func()) {
+	go func() {
+		fn()
+	}()
+}
+
+//Work 主要工作是异步读写, 数据都通过channel传递
 func (c *Conn) Work() {
-	//asyncWork()
+	asyncWork(c.readLoop)
+	asyncWork(c.writeLoop)
+	asyncWork(c.handleLoop)
 }

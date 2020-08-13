@@ -18,6 +18,9 @@ func Run(address string) {
 		if err != nil {
 			continue
 		}
-		NewConn(conn)
+		//创建conn单独开一个goroutine去完成
+		go func() {
+			NewConn(conn).Work()
+		}()
 	}
 }
